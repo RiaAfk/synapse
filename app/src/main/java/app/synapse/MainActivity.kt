@@ -28,33 +28,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.synapse.core.net.Packet
 import app.synapse.daemon.DataListener
 import app.synapse.ui.theme.SynapseTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.net.InetSocketAddress
+import java.net.Socket
 
 class MainActivity : ComponentActivity() {
-    var dataListener : DataListener? = null
-    private val name = mutableStateOf("")
-
-    private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            dataListener = (service as DataListener.LocalBinder).getService()
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            dataListener = null
-        }
-    }
 
     override fun onStart() {
         super.onStart()
-        Intent(this,DataListener::class.java).also {
-            bindService(it,connection,Context.BIND_AUTO_CREATE)
+        if (!DataListener.isRunning) {
+            Intent(this, DataListener::class.java).also {
+                startService(it)
+            }
         }
     }
 
     override fun onStop() {
         super.onStop()
-        unbindService(connection)
     }
 
 
@@ -67,7 +62,6 @@ class MainActivity : ComponentActivity() {
             SynapseTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
-                        name,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -77,16 +71,17 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name:MutableState<String>,modifier: Modifier = Modifier) {
-    var key by remember { mutableStateOf("") }
-    var value by remember { mutableStateOf("") }
+fun Greeting(modifier: Modifier = Modifier) {
+    var key by remember { mutableStateOf("key") }
+    var value by remember { mutableStateOf("4444") }
+    var name by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier.fillMaxSize()
             .padding(18.dp)
     ) {
         Text(
-            text = "Hello ${name.value}!",
+            text = "Hello ${name}!",
             modifier = modifier
         )
         Column(
@@ -110,6 +105,19 @@ fun Greeting(name:MutableState<String>,modifier: Modifier = Modifier) {
             Button(
                 onClick = {
                     Log.w("Btn", "Click recorded")
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val socks = Socket()
+                        socks.connect(InetSocketAddress("127.0.0.1",7777))
+                        val pkt = Packet.from(
+                            kvStore = Packet.KvStore().apply {
+                                put(key , value)
+                            }
+                        )
+
+                        socks.outputStream.write(
+                            pkt.serialize()
+                        )
+                    }
                 }
             ) {
                 Text("Submit")

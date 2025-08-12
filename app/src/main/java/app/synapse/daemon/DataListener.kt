@@ -9,22 +9,31 @@ import app.synapse.core.net.Packet
 import app.synapse.core.net.SocketServer
 
 class DataListener: Service() {
-
-    inner class LocalBinder : Binder() {
-        fun getService() = this@DataListener
+    companion object State {
+        var isRunning = false
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    var sockSrv: SocketServer? = null
+
+    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val sockSrv = SocketServer()
-        sockSrv.listen { pkt ->
-            Packet.from(pkt)?.let {
-                Log.w("DataListener", "REC: ${it.kvStore.keys()}")
+        Log.v("DataListener", "starting service")
+        isRunning = true
+        sockSrv = SocketServer()
+        sockSrv?.listen { soc ->
+            Packet.from(soc)?.let {
+                Log.v("DataListener", "PEER: ${soc.localAddress}")
+                Log.v("DataListener", "REC : ${it.kvStore.keys()}")
             }
         }
+
         return START_STICKY
+    }
+
+    override fun onDestroy() {
+        isRunning=false
+        sockSrv?.stop()
+        super.onDestroy()
     }
 }
