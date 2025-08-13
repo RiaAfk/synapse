@@ -9,8 +9,7 @@ data class Packet(
 ): Serde {
     class Header(private val data: ByteArray) : Serde {
         val version: Byte = data[0]
-//        val length : Int = (data[1].toInt() shl 8) or (data[2].toInt() and 0xFF)
-        val length = data[1].toInt()
+        val length : Int = (data[1].toInt() shl 8) or (data[2].toInt() and 0xFF)
         val type : Byte = data[3]
 //         val future : ByteArray = data.sliceArray(2..23)
 
@@ -27,7 +26,7 @@ data class Packet(
                 val highByte = (length shr 8).toByte()
                 val lowByte = (length and 0xFF).toByte()
 
-                return Header(byteArrayOf(version ,length.toByte() , 0 , type))
+                return Header(byteArrayOf(version , highByte, lowByte , 0 , type))
             }
         }
     }
